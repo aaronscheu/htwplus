@@ -41,8 +41,9 @@ public class GroupController extends BaseController {
     @Transactional(readOnly=true)
     public static Result view(Long id) {
         Group group = Group.findById(id);
+
         if (group == null) {
-            Logger.error("No group found with id: " + id);
+            flash("error", Messages.get("group.group_not_found"));
             return redirect(controllers.routes.GroupController.index());
         }
         if (Secured.viewGroup(group)) {
@@ -57,6 +58,10 @@ public class GroupController extends BaseController {
 	public static Result stream(Long id, int page, boolean raw) {
 		Group group = Group.findById(id);
 
+        if (group == null) {
+            flash("error", Messages.get("group.group_not_found"));
+            return redirect(controllers.routes.GroupController.index());
+        }
         if(!Secured.viewGroup(group)){
 			return redirect(routes.GroupController.view(group.id));
 		}
@@ -76,18 +81,19 @@ public class GroupController extends BaseController {
 	public static Result media(Long id) {
 		Form<Media> mediaForm = Form.form(Media.class);
 		Group group = Group.findById(id);
-		
+
+        if (group == null) {
+            flash("error", Messages.get("group.group_not_found"));
+            return redirect(controllers.routes.GroupController.index());
+        }
 		if(!Secured.viewGroup(group)){
 			return redirect(controllers.routes.Application.index());
 		}
-		
-		if (group == null) {
-			return redirect(controllers.routes.GroupController.index());
-		} else {
-			Navigation.set(Level.GROUPS, "Media", group.title, controllers.routes.GroupController.stream(group.id, PAGE, false));
-			List<Media> mediaSet = group.media; 
-			return ok(media.render(group, mediaForm, mediaSet));
-		}
+
+        Navigation.set(Level.GROUPS, "Media", group.title, controllers.routes.GroupController.stream(group.id, PAGE, false));
+        List<Media> mediaSet = group.media;
+        return ok(media.render(group, mediaForm, mediaSet));
+
 	}
 	
 	public static Result create() {
@@ -153,22 +159,29 @@ public class GroupController extends BaseController {
 	@Transactional
 	public static Result edit(Long id) {
 		Group group = Group.findById(id);
-		
-		
-		if (group == null) {
-			return redirect(controllers.routes.GroupController.index());
-		} else {
-			Navigation.set(Level.GROUPS, "Bearbeiten", group.title, controllers.routes.GroupController.stream(group.id, PAGE, false));
-			Form<Group> groupForm = Form.form(Group.class).fill(group);
-			groupForm.data().put("type", String.valueOf(group.groupType.ordinal()));
-			return ok(edit.render(group, groupForm));
-		}
+
+        if (group == null) {
+            flash("error", Messages.get("group.group_not_found"));
+            return redirect(controllers.routes.GroupController.index());
+        }
+
+        Navigation.set(Level.GROUPS, "Bearbeiten", group.title, controllers.routes.GroupController.stream(group.id, PAGE, false));
+        Form<Group> groupForm = Form.form(Group.class).fill(group);
+        groupForm.data().put("type", String.valueOf(group.groupType.ordinal()));
+        return ok(edit.render(group, groupForm));
+
 	}
 	
 	@Transactional
 	public static Result update(Long groupId) {
 		Group group = Group.findById(groupId);
-		Navigation.set(Level.GROUPS, "Bearbeiten", group.title, controllers.routes.GroupController.stream(group.id, PAGE, false));
+
+        if (group == null) {
+            flash("error", Messages.get("group.group_not_found"));
+            return redirect(controllers.routes.GroupController.index());
+        }
+
+        Navigation.set(Level.GROUPS, "Bearbeiten", group.title, controllers.routes.GroupController.stream(group.id, PAGE, false));
 		
 		// Check rights
 		if(!Secured.editGroup(group)) {
@@ -212,6 +225,12 @@ public class GroupController extends BaseController {
     @Transactional
 	public static Result delete(Long id) {
 		Group group = Group.findById(id);
+
+        if (group == null) {
+            flash("error", Messages.get("group.group_not_found"));
+            return redirect(controllers.routes.GroupController.index());
+        }
+
 		if (Secured.deleteGroup(group)) {
 			group.delete();
 			flash("info", "'" + group.title + "' wurde erfolgreich gelöscht!");
@@ -223,12 +242,23 @@ public class GroupController extends BaseController {
 	
 	public static Result token(Long groupId) {
 		Group group = Group.findById(groupId);
+
+        if (group == null) {
+            flash("error", Messages.get("group.group_not_found"));
+            return redirect(controllers.routes.GroupController.index());
+        }
+
 		Navigation.set(Level.GROUPS, "Token eingeben", group.title, controllers.routes.GroupController.stream(group.id, PAGE, false));
 		return ok(token.render(group, groupForm));
 	}
 	
 	public static Result validateToken(Long groupId) {
 		Group group = Group.findById(groupId);
+
+        if (group == null) {
+            flash("error", Messages.get("group.group_not_found"));
+            return redirect(controllers.routes.GroupController.index());
+        }
 		
 		if(Secured.isMemberOfGroup(group, Component.currentAccount())){
 			flash("error", "Du bist bereits Mitglied dieser Gruppe!");
@@ -256,6 +286,11 @@ public class GroupController extends BaseController {
 		Account account = Component.currentAccount();
 		Group group = Group.findById(id);
 		GroupAccount groupAccount;
+
+        if (group == null) {
+            flash("error", Messages.get("group.group_not_found"));
+            return redirect(controllers.routes.GroupController.index());
+        }
 				
 		if (Secured.isMemberOfGroup(group, account)) {
 			Logger.debug("User is already member of group or course");
@@ -304,6 +339,12 @@ public class GroupController extends BaseController {
 	public static Result removeMember(long groupId, long accountId){
 		Account account = Account.findById(accountId);
 		Group group = Group.findById(groupId);
+
+        if (group == null) {
+            flash("error", Messages.get("group.group_not_found"));
+            return redirect(controllers.routes.GroupController.index());
+        }
+
 		GroupAccount groupAccount = GroupAccount.find(account, group);
 		
 		Call defaultRedirect = controllers.routes.GroupController.index();
@@ -400,6 +441,12 @@ public class GroupController extends BaseController {
     @Transactional
 	public static Result invite(long groupId) {
 		Group group = Group.findById(groupId);
+
+        if (group == null) {
+            flash("error", Messages.get("group.group_not_found"));
+            return redirect(controllers.routes.GroupController.index());
+        }
+
 		Navigation.set(Level.GROUPS, "Freunde einladen", group.title, controllers.routes.GroupController.stream(group.id, PAGE, false));
 		return ok(invite.render(group, Friendship.friendsToInvite(Component.currentAccount(), group), GroupAccount.findAccountsByGroup(group, LinkType.invite)));
 	}
@@ -407,7 +454,13 @@ public class GroupController extends BaseController {
     @Transactional
 	public static Result inviteMember(long groupId) {
 		Group group = Group.findById(groupId);
-		Account currentUser = Component.currentAccount();
+
+        if (group == null) {
+            flash("error", Messages.get("group.group_not_found"));
+            return redirect(controllers.routes.GroupController.index());
+        }
+
+        Account currentUser = Component.currentAccount();
 		
 		if (Secured.inviteMember(group)) {
             // bind invite list to group
@@ -452,6 +505,12 @@ public class GroupController extends BaseController {
 	
 	public static Result acceptInvitation(long groupId, long accountId){
 		Group group = Group.findById(groupId);
+
+        if (group == null) {
+            flash("error", Messages.get("group.group_not_found"));
+            return redirect(controllers.routes.GroupController.index());
+        }
+
 		Account account = Account.findById(accountId);
 		GroupAccount groupAccount = GroupAccount.find(account,group);
 		
@@ -465,6 +524,12 @@ public class GroupController extends BaseController {
 	
 	public static Result declineInvitation(long groupId, long accountId){
 		Group group = Group.findById(groupId);
+
+        if (group == null) {
+            flash("error", Messages.get("group.group_not_found"));
+            return redirect(controllers.routes.GroupController.index());
+        }
+
 		Account account = Account.findById(accountId);
 		GroupAccount groupAccount = GroupAccount.find(account,group);
 		
