@@ -68,12 +68,11 @@ public class GroupController extends BaseController {
 
         Navigation.set(Level.GROUPS, "Newsstream", group.title, controllers.routes.GroupController.stream(group.id, PAGE, false));
         List<Post> posts = Post.getPostsForGroup(group, LIMIT, page);
-        List<Account> memberList = GroupAccount.findAccountsByGroup(group, LinkType.establish);
 
         if(raw) {
             return ok(streamRaw.render(group, posts, postForm, Post.countPostsForGroup(group), LIMIT, page));
         } else {
-            return ok(stream.render(group, posts, postForm, Post.countPostsForGroup(group), LIMIT, page, memberList));
+            return ok(stream.render(group, posts, postForm, Post.countPostsForGroup(group), LIMIT, page));
         }
 	}
 	
@@ -447,7 +446,7 @@ public class GroupController extends BaseController {
             return redirect(controllers.routes.GroupController.index());
         }
 
-		Navigation.set(Level.GROUPS, "Freunde einladen", group.title, controllers.routes.GroupController.stream(group.id, PAGE, false));
+		Navigation.set(Level.GROUPS, "Kontakte einladen", group.title, controllers.routes.GroupController.stream(group.id, PAGE, false));
 		return ok(invite.render(group, Friendship.friendsToInvite(Component.currentAccount(), group), GroupAccount.findAccountsByGroup(group, LinkType.invite)));
 	}
 
@@ -514,7 +513,7 @@ public class GroupController extends BaseController {
 		Account account = Account.findById(accountId);
 		GroupAccount groupAccount = GroupAccount.find(account,group);
 		
-		if(groupAccount != null && Secured.acceptInvitation(groupAccount) ){
+		if(groupAccount != null && Secured.acceptInvitation(groupAccount)) {
 			join(group.id);
 			
 		}

@@ -22,11 +22,11 @@ a {
 	outline: none!important;
 }
 
-a.disabled {
-    pointer-events: none;
-    cursor: default;
-    color: grey;
-    text-decoration: line-through;
+a.disabled,
+a.disabled > .glyphicon {
+    cursor: not-allowed;
+    color: lightgrey;
+    text-decoration: none;
 }
 
 hr {
@@ -707,7 +707,6 @@ input.hp-notification-hour {
 /*============================== Notepad ==============================*/
 
 div.hp-notepad-content {
-	min-height: 500px;
 	padding: 5px 30px 15px;
     margin-bottom: 15px;
 	box-sizing: content-box;
@@ -721,49 +720,8 @@ div.hp-notepad-content {
 
 }
 
-div.hp-sitenav {
-    padding: 10px;
-    box-sizing: content-box;
-    background-color: white;
-    -moz-box-sizing: content-box;
-    -webkit-box-sizing: content-box;
-    border-radius: 4px;
-    -moz-box-shadow: 0 0 3px #888;
-    -webkit-box-shadow: 0 0 3px #888;
-    box-shadow: 0 0 3px #888;
-    margin-bottom: 10px;
-}
-
-div.hp-sitenav hr {
-    margin-top: 10px;
-    margin-bottom: 10px;
-}
-
-div.hp-sitenav .hp-sitenav-button {
-    margin: 2px 0px;
-}
-
-@media (min-width: 992px) {
-    #hp-site-navigation {
-        width: 220px;
-    }
-    div.hp-sitenav .hp-sitenav-button {
-        width: 98px;
-    }
-}
-
-@media (min-width: 1200px) {
-    #hp-site-navigation {
-        width: 270px;
-    }
-    div.hp-sitenav .hp-sitenav-button {
-        width: 120px;
-    }
-}
-
-
 div.addmargin {
-    margin-top: 45px;
+    margin-top: 25px;
 }
 
 div.hp-notepad-content > *:last-child {
@@ -973,13 +931,6 @@ div.hp-pagination {
     color: inherit;
     text-decoration: inherit;
     top: 0;
-}
-
-.hp-post-bookmark-icon {
-    float: right;
-    font-size: 16px;
-    position: relative;
-    top: -25px;
 }
 
 /*============================== Avatare ==============================*/
@@ -1424,12 +1375,10 @@ div.hp-avatar-default-9 {
     color: #999;
 }
 
-.hp-post-area .hp-post-footer {
-    padding: 10px;
-}
-.hp-post-area .hp-post-footer a {
-    background-color: whitesmoke;
-    border-radius: 0px;
+.hp-post-area .hp-post-header a.hp-post-options {
+    margin: 10px;
+    font-size: 16px;
+    float: right;
 }
 
 .hp-post-area hr {
@@ -1497,6 +1446,22 @@ div.hp-avatar-default-9 {
     min-height: 210px;
 }
 
+#hp-profile-header .links {
+    background-color: white;
+    font-size: 16px;
+    border-bottom: 1px solid #ddd;
+    border-left: 1px solid #ddd;
+}
+
+#hp-profile-header .links a {
+    display: inline-block;
+    padding: 10px;
+}
+
+#hp-profile-header .links a.active > .glyphicon {
+    color: #76b900;
+}
+
 #hp-profile-header .hp-circle {
     width: 110px;
     margin-top: 30px;
@@ -1525,41 +1490,32 @@ div.hp-avatar-default-9 {
 #hp-profile-header .headline {
      border-bottom: 1px solid #ddd;
      padding-left: 190px;
-     padding-top: 50px;
      background-color: #f9f9f9;
- }
-
-#hp-profile-header .headline .dropdown {
-  position: relative;
-  display: inline;
 }
 
-#hp-profile-header .headline .dropdown .title {
-  text-transform: uppercase;
-      font-size: 20px;
-      font-family: initial;
+#hp-profile-header .headline .title {
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
 }
-
 
 
 #hp-profile-header .bottomline {
     text-align: right;
-    padding-bottom: 52px;
+    padding-bottom: 20px;
     padding-top: 5px;
     padding-right: 10px;
     padding-left: 190px;
 }
 
+#hp-profile-header .bottomline .hp-avatar-container {
+    padding: 10px 0px;
+}
+
+#hp-profile-header .bottomline .hp-avatar-container div {
+    display: inline-block;
+}
+
 #hp-profile-header .postForm {
     padding: 10px 40px;
-}
-
-#hp-profile-header .links {
-    text-align: right;
-    padding-right: 10px;
-}
-
-#hp-profile-header .links a {
-    background-color: whitesmoke;
-    border-radius: 0px;
 }
