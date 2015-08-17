@@ -1,12 +1,13 @@
 @(user: Account)
-@defining(Component.currentAccount()) { curUser =>
-<!-- confirmDeleteFriendModal -->
-<div class="modal fade" id="confirmDeleteFriend@user.id" tabindex="-1" role="dialog">@views.html.Friends.snippets.deleteFriendModal(user)</div>
-<!-- Ende confirmDeleteFriendModal -->
-}
 
 <div class="row">
     <div class="col-md-12" role="main">
+
+        @if(Secured.isFriend(user)) {
+            <!-- confirmDeleteFriendModal -->
+            <div class="modal fade" id="confirmDeleteFriend@user.id" tabindex="-1" role="dialog">@views.html.Friends.snippets.deleteFriendModal(user)</div>
+        }
+
         <div class="addmargin">
             <div id="hp-profile-header">
 
@@ -32,7 +33,7 @@
                         }
                         }
 
-                        <a href="@routes.ProfileController.groups(user.id)" class='@if(Navigation.getTitle().equals("Gruppen & Kurse")){active}' rel="tooltip" data-original-title="@user.firstname's Gruppen- und Kurse" data-container="body">
+                        <a href="@routes.ProfileController.groups(user.id)" class='@if(Navigation.getTitle().equals("Gruppen & Kurse")){active}' rel="tooltip" data-original-title="@user.firstname's Gruppen und Kurse" data-container="body">
                             <span class="glyphicon glyphicon-th-list"></span>
                         </a>
 
