@@ -21,7 +21,7 @@
 			}
             @if(Secured.isAllowedToEditPost(comment, Component.currentAccount())) {
                 @if(Secured.isPostStillEditable(comment, Component.currentAccount())) {
-                    <a id="hp-editPost_@comment.id" class="hp-post-edit hp-nohref" rel="tooltip" data-original-title="Kommentar bearbeiten">
+                    <a id="hp-editPost_@comment.id" class="hp-post-edit hp-nohref" data-target-post-id="@comment.id" rel="tooltip" data-original-title="Kommentar bearbeiten">
                         <span class="glyphicon glyphicon-pencil"></span>
                     </a>
                 } else {
@@ -31,6 +31,6 @@
                 }
             }
 		</h5>
-		<div class="hp-truncate hp-white-space" id="@comment.id">@comment.content</div>
+		<div class="hp-post hp-truncate" id="@comment.id">@comment.content</div>
 	</div>
 </div>

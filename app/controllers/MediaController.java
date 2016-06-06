@@ -1,5 +1,22 @@
 package controllers;
 
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
+import managers.FolderManager;
+import managers.MediaManager;
+import models.Folder;
+import models.Group;
+import models.Media;
+import models.services.NotificationService;
+import play.db.jpa.Transactional;
+import play.mvc.Call;
+import play.mvc.Http;
+import play.mvc.Http.MultipartFormData;
+import play.mvc.Result;
+import play.mvc.Security;
+import play.twirl.api.Content;
+
+import javax.inject.Inject;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -12,284 +29,234 @@ import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import models.services.NotificationService;
-import org.apache.commons.io.FileUtils;
+import views.html.Media.list;
 
-import models.Group;
-import models.Media;
-import play.Logger;
-import play.Play;
-import play.data.Form;
-import play.db.jpa.Transactional;
-import play.mvc.Call;
-import play.mvc.Http;
-import play.mvc.Http.MultipartFormData;
-import play.mvc.Http.MultipartFormData.FilePart;
-import play.mvc.Result;
-import play.mvc.Security;
 
 @Security.Authenticated(Secured.class)
 public class MediaController extends BaseController {
-	
-	static Form<Media> mediaForm = Form.form(Media.class);
-	final static String tempPrefix = "htwplus_temp";
-	
-    @Transactional(readOnly=true)	
-    public static Result view(Long id) {
-    	Media media = Media.findById(id);
-    	if(Secured.viewMedia(media)) {
-			if (media == null) {
-				return redirect(controllers.routes.Application.index());
-			} else {
-				response().setHeader("Content-disposition","attachment; filename=\"" + media.fileName + "\"");
-				return ok(media.file);
-			}
-    	} else {
-    		flash("error", "Dazu hast du keine Berechtigung!");
-    		return redirect(controllers.routes.Application.index());
-     	}
-    }
-    
-    @Transactional
-    public static Result delete(Long id) {
-    	Media media = Media.findById(id);
-    	
-    	Call ret = controllers.routes.Application.index();
-    	if(media.belongsToGroup()){
-    		Group group = media.group;
-    		if(!Secured.deleteMedia(media)){
-				return redirect(controllers.routes.Application.index());
-    		}
-    		ret = controllers.routes.GroupController.media(group.id);
-    	} 
-    	
-    	media.delete();
-		flash("success", "Datei " + media.title + " erfolgreich gelöscht!");
-    	return redirect(ret);
-    }	
-    
-    @Transactional(readOnly=true)	
-    public static Result multiView(String target, Long id) {
-    	
-		Call ret = controllers.routes.Application.index();
-		Group group = null;
-		String filename = "result.zip";
-		
-		if(target.equals(Media.GROUP)) {
-			group = Group.findById(id);
-			if(!Secured.viewGroup(group)){
-				return redirect(controllers.routes.Application.index());
-			}
-			filename = createFileName(group.title);
-			ret = controllers.routes.GroupController.media(id);
-		} else {
-			return redirect(ret);
-		}
-    	
-    	String[] selection = request().body().asFormUrlEncoded().get("selection");
-    	List<Media> mediaList = new ArrayList<Media>();
-    	
-    	if(selection != null) {
-           	for (String s : selection) {
-        		Media media = Media.findById(Long.parseLong(s));
-        		if(Secured.viewMedia(media)) {
-            		mediaList.add(media);	
-        		} else {
-        			flash("error", "Dazu hast du keine Berechtigung!");
-        			return redirect(controllers.routes.Application.index());
-        		}
-           	}
-    	} else {
-    		flash("error", "Bitte wähle mindestens eine Datei aus.");
-    		return redirect(ret);
-    	}
 
-		try {
-			File file = createZIP(mediaList, filename);
-			response().setHeader("Content-disposition","attachment; filename=\"" + filename + "\"");
-	    	return ok(file);
-		} catch (IOException e) {
-			flash("error", "Etwas ist schiefgegangen. Bitte probiere es noch einmal!");
-			return redirect(ret);
-		}
+    @Inject
+    MediaManager mediaManager;
+
+    @Inject
+    FolderManager folderManager;
+
+    final static String tempPrefix = "htwplus_temp";
+    private Config conf = ConfigFactory.load();
+    final int MAX_FILESIZE = conf.getInt("media.maxSize.file");
+
+    @Transactional(readOnly = true)
+    public Result view(Long mediaId, String action) {
+        Media media = mediaManager.findById(mediaId);
+        if (media == null) {
+            return notFound();
+        }
+        if (Secured.viewMedia(media)) {
+            switch (action) {
+                case "show":
+                    response().setHeader("Content-Disposition", "inline; filename=\"" + media.fileName + "\"");
+                    break;
+                case "download":
+                    response().setHeader("Content-Disposition", "attachment; filename=\"" + media.fileName + "\"");
+                    break;
+            }
+            return ok(media.file);
+        } else {
+            flash("error", "Dazu hast du keine Berechtigung!");
+            return Secured.nullRedirect(request());
+        }
     }
-    
-    private static String createFileName(String prefix) {
-    	return prefix + "-" + new SimpleDateFormat("yyyy-MM-dd").format(new Date()) + ".zip";
+
+    public Result mediaList(Long folderId) {
+        Folder folder = folderManager.findById(folderId);
+
+        if (!Secured.viewFolder(folder)) {
+            return forbidden("Dazu hast du keine Berechtigung");
+        }
+        Folder rootFolder  = FolderManager.findRoot(folder);
+        List<Media> mediaSet = folder.files;
+        List<Folder> folderList = folder.folders;
+
+        for (Media media : mediaSet) {
+            media.sizeInByte = mediaManager.bytesToString(media.size, false);
+        }
+
+        return ok(list.render(mediaSet, folderList, rootFolder.group.id));
     }
-    
-    
-    private static File createZIP(List<Media> media, String fileName) throws IOException {
-    	
-       	//cleanUpTemp(); // JUST FOR DEVELOPMENT, DO NOT USE IN PRODUCTION
-	    String tmpPath = Play.application().configuration().getString("media.tempPath");
-    	File file = File.createTempFile(tempPrefix, ".tmp", new File(tmpPath));
-    	
-    	ZipOutputStream zipOut = new ZipOutputStream(new FileOutputStream(file));
-    	zipOut.setLevel(Deflater.NO_COMPRESSION);
+
+
+
+    @Transactional
+    public Result delete(Long id) {
+        Media media = mediaManager.findById(id);
+
+        if (media == null) {
+            return notFound();
+        }
+
+        if (!Secured.deleteMedia(media)) {
+            return redirect(controllers.routes.Application.index());
+        }
+
+        mediaManager.delete(media);
+        flash("success", "Datei " + media.title + " erfolgreich gelöscht!");
+        return Secured.nullRedirect(request());
+    }
+
+    @Transactional(readOnly = true)
+    public Result multiView() {
+
+        String[] action = request().body().asFormUrlEncoded().get("action");
+        Result ret = Secured.nullRedirect(request());
+
+        String[] mediaselection = request().body().asFormUrlEncoded().get("mediaSelection");
+        String[] folderSelection = request().body().asFormUrlEncoded().get("folderSelection");
+
+        if (mediaselection == null && folderSelection == null) {
+            flash("error", "Bitte wähle mindestens eine Datei aus.");
+            return ret;
+        }
+
+        if (action[0].equals("delete")) {
+
+            // delete media files
+            if (mediaselection != null) {
+                for (String s : mediaselection) {
+                    Media media = mediaManager.findById(Long.parseLong(s));
+                    if (Secured.deleteMedia(media)) {
+                        mediaManager.delete(media);
+                    }
+                }
+            }
+
+            // delete folder and files
+            if (folderSelection != null) {
+                for (String folderId : folderSelection) {
+                    Folder folder = folderManager.findById(Long.parseLong(folderId));
+                    if (Secured.deleteFolder(folder)) {
+                        folderManager.delete(folder);
+                    }
+                }
+            }
+            flash("success", "Datei(en) erfolgreich gelöscht!");
+        }
+
+        if (action[0].equals("download")) {
+
+            String filename = createFileName("HTWplus");
+            List<Media> mediaList = new ArrayList<>();
+
+            // grab media files
+            if (mediaselection != null) {
+                for (String s : mediaselection) {
+                    Media media = mediaManager.findById(Long.parseLong(s));
+                    if (Secured.viewMedia(media)) {
+                        mediaList.add(media);
+                    }
+                }
+            }
+
+            // grab folder files
+            if (folderSelection != null) {
+                for (String folderId : folderSelection) {
+                    Folder folder = folderManager.findById(Long.parseLong(folderId));
+                    if (Secured.viewFolder(folder)) {
+                        mediaList.addAll(folderManager.getAllMedia(folder));
+                    }
+                }
+            }
+
+            try {
+                File file = createZIP(mediaList);
+                response().setHeader("Content-disposition", "attachment; filename=\"" + filename + "\"");
+                return ok(file);
+            } catch (IOException e) {
+                flash("error", "Etwas ist schiefgegangen. Bitte probiere es noch einmal!");
+                return ret;
+            }
+        }
+        return ret;
+    }
+
+    private String createFileName(String prefix) {
+        return prefix + "-" + new SimpleDateFormat("yyyy-MM-dd").format(new Date()) + ".zip";
+    }
+
+
+    private File createZIP(List<Media> media) throws IOException {
+
+        //cleanUpTemp(); // JUST FOR DEVELOPMENT, DO NOT USE IN PRODUCTION
+        String tmpPath = conf.getString("media.tempPath");
+        File file = File.createTempFile(tempPrefix, ".tmp", new File(tmpPath));
+
+        ZipOutputStream zipOut = new ZipOutputStream(new FileOutputStream(file));
+        zipOut.setLevel(Deflater.NO_COMPRESSION);
         byte[] buffer = new byte[4092];
         int byteCount = 0;
-    	for (Media m : media) {
-    		zipOut.putNextEntry(new ZipEntry(m.fileName));
-    		FileInputStream fis = new FileInputStream(m.file);
+        for (Media m : media) {
+            zipOut.putNextEntry(new ZipEntry(m.fileName));
+            FileInputStream fis = new FileInputStream(m.file);
             byteCount = 0;
-            while ((byteCount = fis.read(buffer)) != -1)
-            {
-            	zipOut.write(buffer, 0, byteCount);
+            while ((byteCount = fis.read(buffer)) != -1) {
+                zipOut.write(buffer, 0, byteCount);
             }
             fis.close();
             zipOut.closeEntry();
-		}
-    	
-    	zipOut.flush();
-    	zipOut.close();
-    	return file;
-    }
+        }
 
-    
-    /**
-     * Size of temporary media directoy used for ZIP Downloads
-     */
-    public static long sizeTemp() {
-	    String tmpPath = Play.application().configuration().getString("media.tempPath");
-	    File dir = new File(tmpPath);
-	    return FileUtils.sizeOfDirectory(dir);
-    }
-    
-    /**
-     * Cleans the temporary media directoy used for ZIP Downloads
-     */
-    public static void cleanUpTemp() {
-	    Logger.info("Cleaning the Tempory Media Directory");
-
-	    String tmpPath = Play.application().configuration().getString("media.tempPath");
-	    File dir = new File(tmpPath);
-	    Logger.info("Directory: " + dir.toString());
-	    File[] files = dir.listFiles();
-	    Logger.info("Absolut Path: " + dir.getAbsolutePath());
-	    
-	    if(files != null) {
-		    // Just delete files older than 1 hour
-		    long hours = 1;
-			long eligibleForDeletion = System.currentTimeMillis() - (hours * 60 * 60 * 1000L);
-		    
-		    Logger.info("Found " + files.length + " Files");
-		    if(files != null){	    
-			    for (File file : files) {
-			    	Logger.info("Working on " + file.getName());
-					if(file.getName().startsWith(tempPrefix) && file.lastModified() < eligibleForDeletion) {
-						Logger.info("Deleting: " + file.getName());
-						file.delete();
-					}
-				}
-		    }
-	    } else {
-	    	Logger.info("files is null");
-	    }
-	    
+        zipOut.flush();
+        zipOut.close();
+        return file;
     }
 
     /**
-     * New file is uploaded.
+     * Upload some media.
      *
-     * @param target Target of the file (e.g. "group")
-     * @param id ID of the target (e.g. group ID)
+     * @param folderId Folder to upload.
      * @return Result
      */
-	@Transactional
-    public static Result upload(String target, Long id) {
-	    final int maxTotalSize = Play.application().configuration().getInt("media.maxSize.total");
-	    final int maxFileSize = Play.application().configuration().getInt("media.maxSize.file");
-	    
-		Call ret = controllers.routes.Application.index();
-		Group group;
+    @Transactional
+    public Result upload(Long folderId) {
+        // Get the data
+        MultipartFormData body = request().body().asMultipartFormData();
+        Http.MultipartFormData.FilePart upload = body.getFile("file");
+        Folder folder = folderManager.findById(folderId);
 
-        // Where to put the media
-		if (target.equals(Media.GROUP)) {
-			group = Group.findById(id);
-			if (!Secured.uploadMedia(group)) {
-				return redirect(controllers.routes.Application.index());
-			}
-			ret = controllers.routes.GroupController.media(id);
-		} else {
-			return redirect(ret);
-		}
-		
-		// Is it to big in total?
-		String[] contentLength = request().headers().get("Content-Length");
-		if (contentLength != null) {
-			int size = Integer.parseInt(contentLength[0]);
-			if(Media.byteAsMB(size) > maxTotalSize) {
-				flash("error", "Du darfst auf einmal nur " + maxTotalSize + " MB hochladen.");
-				return redirect(ret);
-			}
-		} else {
-			flash("error", "Etwas ist schiefgegangen. Bitte probiere es noch einmal!");
-		    return redirect(ret);  	
-		}
-		
-		// Get the data
-		MultipartFormData body = request().body().asMultipartFormData();
-		List<Http.MultipartFormData.FilePart> uploads = body.getFiles();
+        if (!Secured.viewFolder(folder)) {
+            return forbidden("Dazu hast du keine Berechtigung");
+        }
 
-		List<Media> mediaList = new ArrayList<Media>();
-		
-		if (!uploads.isEmpty()) {
-			
-			// Create the Media models and perform some checks
-			for (FilePart upload : uploads) {
-				
-				Media med = new Media();
-				med.title = upload.getFilename();
-				med.mimetype = upload.getContentType();
-				med.fileName = upload.getFilename();
-				med.file = upload.getFile();				
-				med.owner = Component.currentAccount();
-				
-				if (Media.byteAsMB(med.file.length()) > maxFileSize) {
-					flash("error", "Die Datei " + med.title + " ist größer als " + maxFileSize + " MB!");
-					return redirect(ret);
-				}
-				
-				String error = "Eine Datei mit dem Namen " + med.title + " existiert bereits";
-				if(target.equals(Media.GROUP)) {
-                    med.temporarySender = Component.currentAccount();
-					med.group = group;
-					if(med.existsInGroup(group)){
-						flash("error", error);
-						return redirect(ret);
-					}
-					
-				} 				
-				mediaList.add(med);
-			}
-			
-			for (Media m : mediaList) {
-				try {
-					m.create();
+        if (upload != null) {
+            // Create the Media models and perform some checks
+            // File too big?
+            if (mediaManager.byteAsMB(upload.getFile().length()) > MAX_FILESIZE) {
+                return status(REQUEST_ENTITY_TOO_LARGE, "Es sind maximal "+ MAX_FILESIZE + " MByte pro Datei möglich.");
+            }
+            // File already exists?
+            if (mediaManager.existsInFolder(upload.getFilename(), folder)) {
+                return status(CONFLICT, "Eine Datei mit diesem Namen existiert bereits.");
+            }
+            // Everything is fine
+            Media med = new Media();
+            med.title = upload.getFilename();
+            med.mimetype = upload.getContentType();
+            med.fileName = upload.getFilename();
+            med.file = upload.getFile();
+            med.owner = Component.currentAccount();
+            med.folder = folder;
+            med.temporarySender = Component.currentAccount();
 
-                    // create group notification, if a group exists
-                    if (m.group != null) {
-                        NotificationService.getInstance().createNotification(m, Media.MEDIA_NEW_MEDIA);
-                    }
-				} catch (Exception e) {
-					return internalServerError(e.getMessage());
-				}
-			}
-			flash("success", "Datei(en) erfolgreich hinzugefügt.");
-		    return redirect(ret);
-		} else {
-			flash("error", "Etwas ist schiefgegangen. Bitte probiere es noch einmal!");
-		    return redirect(ret);  
-		}
+            // Persist medialist and create notification(s)
+            try {
+                mediaManager.create(med);
+                NotificationService.getInstance().createNotification(med, Media.MEDIA_NEW_MEDIA);
+            } catch (Exception e) {
+                return internalServerError("Während des Uploads ist etwas schiefgegangen!");
+            }
+
+            return created("/media/" + med.id);
+        } else {
+            return internalServerError("Es konnte keine Datei gefunden werden!");
+        }
     }
-	
-	public static String bytesToString(long bytes, boolean si) {
-		int unit = si ? 1000 : 1024;
-	    if (bytes < unit) return bytes + " B";
-	    int exp = (int) (Math.log(bytes) / Math.log(unit));
-	    String pre = (si ? "kMGTPE" : "KMGTPE").charAt(exp-1) + (si ? "" : "i");
-	    return String.format("%.2f %sB", bytes / Math.pow(unit, exp), pre);
-	}
-	
 }

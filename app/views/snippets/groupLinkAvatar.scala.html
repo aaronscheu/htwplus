@@ -1,0 +1,9 @@
+@(group: Group, size: String)
+
+<a class="hp-nohref" href="@routes.GroupController.stream(group.id)">
+	@if(group.hasAvatar){
+		<img alt="avatar" src='@routes.GroupController.getAvatar(group.id, size)' class="hp-avatar-@size" />
+	} else {
+		<span class='glyphicon @Messages("group.avatar.type."+group.groupType)'></span>
+	}
+</a>

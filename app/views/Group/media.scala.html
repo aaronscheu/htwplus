@@ -1,24 +1,49 @@
-@(group: Group, mediaForm: Form[Media], mediaList: List[Media])
+@(group: Group, mediaList: List[Media], folderList: List[Folder], folder: Folder, navigationFolder: List[Folder], folderForm: Form[Folder])
+@import helper._
 @import models.enums._
 
-@main("Group Media") {
+@main(group.title +" - Medien") {
+
 
 @views.html.Group.snippets.header(group)
 
 <div class="row">
     <div class="col-lg-12" role="main">
         <div class="hp-notepad-content addmargin">
-            <br />
-            @if(!mediaList.isEmpty) {
-                @views.html.Media.list(mediaList,models.Media.GROUP,group.id)
-            } else {
-                <h4><i>Es wurden noch keine Dateien hochgeladen.</i></h4>
-            }
-            <hr />
-            <br />
+            <br/>
+            <ol class="breadcrumb">
+                <li><a href="@routes.GroupController.media(group.id)"><span
+                        class="glyphicon glyphicon-folder-open"></span></a></li>
+                @for(parents <- navigationFolder) {
+                <li><a href="@routes.GroupController.media(group.id, parents.id)">@parents.name</a></li>
+                }
+                <li><a href="#" title="Einen neuen Ordner erstellen" class="hp-create-folder">
+                    <span class="glyphicon glyphicon-plus"></span>
+                </a></li>
+            </ol>
+
+            <div id="hp-create-folder-wrapper" class="hidden">
+                <br />
+                @form(action =  routes.GroupController.createFolder(folder.id)) {
+                    <div class="form-group input-group">
+                        <input type="text" class="form-control" name="name" placeholder="Ordnername wählen">
+                        <span class="input-group-btn">
+                            <button type="submit" class="btn btn-warning">Erstellen</button>
+                        </span>
+                    </div>
+                }
+                <br />
+            </div>
+            <div id="hp-group-media-list">
+                @views.html.Media.list(mediaList, folderList, group.id)
+            </div>
+            <hr/>
+            <br/>
             @if(Secured.uploadMedia(group)) {
-                @views.html.Media.upload(mediaForm,models.Media.GROUP,group.id)
+            @views.html.Media.upload(folder.id)
             }
+            <br/>
+            <br/>
         </div>
     </div>
 </div>
