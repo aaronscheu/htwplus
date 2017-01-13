@@ -4,6 +4,7 @@ import com.typesafe.config.ConfigFactory;
 import controllers.Navigation.Level;
 import managers.AccountManager;
 import managers.GroupManager;
+import managers.MediaManager;
 import managers.PostManager;
 import models.Account;
 import models.Group;
@@ -49,6 +50,9 @@ public class Application extends BaseController {
 
     @Inject
     PostManager postManager;
+
+    @Inject
+    MediaManager mediaManager;
 
     @Inject
     AccountManager accountManager;
@@ -109,7 +113,7 @@ public class Application extends BaseController {
         if (currentAccount == null) {
             return forbidden();
         }
-        SearchResponse response = elasticsearchService.doSearch("searchSuggestions", query, "all", null, 1, currentAccount.id.toString(), asList("name", "title"), asList("friends", "member"));
+        SearchResponse response = elasticsearchService.doSearch("searchSuggestions", query, "all", null, 1, currentAccount.id.toString(), asList("name", "title", "filename"), asList("friends", "member"));
         return ok(response.toString());
     }
 
@@ -129,6 +133,7 @@ public class Application extends BaseController {
         String semesterParam = Form.form().bindFromRequest().field("semester").value();
         String roleParam = Form.form().bindFromRequest().field("role").value();
         String grouptypeParam = Form.form().bindFromRequest().field("grouptype").value();
+        String filenameParam = Form.form().bindFromRequest().field("filename").value();
 
         HashMap<String, String[]> facets = new HashMap<>();
         facets.put("studycourse", buildUserFacetList(studycourseParam));
@@ -136,6 +141,7 @@ public class Application extends BaseController {
         facets.put("semester", buildUserFacetList(semesterParam));
         facets.put("role", buildUserFacetList(roleParam));
         facets.put("grouptype", buildUserFacetList(grouptypeParam));
+        facets.put("filename", buildUserFacetList(filenameParam));
 
 
         if (keyword == null) {
@@ -156,7 +162,7 @@ public class Application extends BaseController {
         SearchResponse response;
 
         try {
-            response = elasticsearchService.doSearch("search", keyword.toLowerCase(), mode, facets, page, currentAccount.id.toString(), asList("name", "title", "content"), asList("friends", "owner", "member", "viewable"));
+            response = elasticsearchService.doSearch("search", keyword.toLowerCase(), mode, facets, page, currentAccount.id.toString(), asList("name", "title", "content", "filename"), asList("friends", "owner", "member", "viewable"));
             elasticsearchResponse.create(response, keyword, mode);
         } catch (NoNodeAvailableException nna) {
             flash("error", "Leider steht die Suche zur Zeit nicht zur Verfügung!");
