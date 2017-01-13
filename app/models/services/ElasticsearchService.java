@@ -277,6 +277,12 @@ public class ElasticsearchService implements IElasticsearchService {
                     boolQuery.must(QueryBuilders.termQuery("grouptype", facet));
                 }
             }
+
+            if (facets.get("filename").length != 0) {
+                for (String facet : facets.get("filename")) {
+                    boolQuery.must(QueryBuilders.termQuery("filename", facet));
+                }
+            }
         }
 
         // Build completeQuery with search- and scoringQuery
@@ -313,6 +319,11 @@ public class ElasticsearchService implements IElasticsearchService {
             searchRequest = searchRequest.addAggregation(AggregationBuilders.terms("grouptype").field("grouptype"));
         }
 
+        // Add media aggregations
+        if (filter.equals("media")) {
+            searchRequest = searchRequest.addAggregation(AggregationBuilders.terms("filename").field("filename"));
+        }
+
         // Apply PostFilter if request mode is not 'all'
         /**final BoolFilterBuilder boolFilterBuilder2 = boolFilter();
 
@@ -334,6 +345,7 @@ public class ElasticsearchService implements IElasticsearchService {
         if (model instanceof Post) deletePost(((Post) model));
         if (model instanceof Group) deleteGroup(((Group) model));
         if (model instanceof Account) deleteAccount(((Account) model));
+        if (model instanceof Media) deleteMedia(((Media) model));
     }
 
     private void deleteGroup(Group group) {
@@ -350,6 +362,12 @@ public class ElasticsearchService implements IElasticsearchService {
 
     private void deleteAccount(Account account) {
         if (isClientAvailable()) client.prepareDelete(ES_INDEX, ES_TYPE_USER, account.id.toString())
+                .execute()
+                .actionGet();
+    }
+
+    private void deleteMedia(Media media) {
+        if (isClientAvailable()) client.prepareDelete(ES_INDEX, ES_TYPE_MEDIA, media.id.toString())
                 .execute()
                 .actionGet();
     }

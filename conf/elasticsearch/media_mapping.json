@@ -28,6 +28,8 @@
         "type": "boolean"
       },
       "filename": {
+        "search_analyzer": "whitespace",
+        "analyzer": "edgengram_analyzer",
         "type": "string"
       }
     }
