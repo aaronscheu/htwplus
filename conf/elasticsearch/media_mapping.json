@@ -1,5 +1,5 @@
 {
-  "media": {
+  "medium": {
     "properties": {
       "title": {
         "search_analyzer": "whitespace",

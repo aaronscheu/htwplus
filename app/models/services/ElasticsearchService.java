@@ -277,12 +277,6 @@ public class ElasticsearchService implements IElasticsearchService {
                     boolQuery.must(QueryBuilders.termQuery("grouptype", facet));
                 }
             }
-
-            if (facets.get("filename").length != 0) {
-                for (String facet : facets.get("filename")) {
-                    boolQuery.must(QueryBuilders.termQuery("filename", facet));
-                }
-            }
         }
 
         // Build completeQuery with search- and scoringQuery
@@ -320,7 +314,7 @@ public class ElasticsearchService implements IElasticsearchService {
         }
 
         // Add media aggregations
-        if (filter.equals("media")) {
+        if (filter.equals("medium")) {
             searchRequest = searchRequest.addAggregation(AggregationBuilders.terms("filename").field("filename"));
         }
 
