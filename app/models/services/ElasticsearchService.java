@@ -127,7 +127,7 @@ public class ElasticsearchService implements IElasticsearchService {
                 .execute().actionGet();
 
         if (isClientAvailable()) client.admin().indices().preparePutMapping(ES_INDEX).setType(ES_TYPE_MEDIA)
-                .setSource(loadFromFile(ES_GROUP_MAPPING))
+                .setSource(loadFromFile(ES_MEDIA_MAPPING))
                 .execute().actionGet();
     }
 
@@ -194,7 +194,7 @@ public class ElasticsearchService implements IElasticsearchService {
                         .field("url", media.url)
                         .field("mime_type", media.mimetype)
                         .field("size", media.size)
-                        .field("owner", media.owner)
+                        .field("owner", media.owner.id)
                         .field("public", mediaManager.isPublic(media))
                         .field("viewable", mediaManager.findAllowedToViewAccountIds(media))
                         .endObject())
