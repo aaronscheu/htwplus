@@ -195,6 +195,8 @@ public class ElasticsearchService implements IElasticsearchService {
                         .field("mime_type", media.mimetype)
                         .field("size", media.size)
                         .field("owner", media.owner)
+                        .field("public", mediaManager.isPublic(media))
+                        .field("viewable", mediaManager.findAllowedToViewAccountIds(media))
                         .endObject())
                 .execute()
                 .actionGet();
