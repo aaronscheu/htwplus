@@ -1,6 +1,23 @@
 {
-  "medium": {
+  "media": {
     "properties": {
+      "title": {
+        "search_analyzer": "whitespace",
+        "analyzer": "edgengram_analyzer",
+        "type": "string"
+      },
+      "description": {
+        "type": "string"
+      },
+      "url": {
+        "type": "string"
+      },
+      "size": {
+        "type": "long"
+      },
+      "mime_type": {
+        "type": "string"
+      },
       "owner": {
         "type": "long"
       },
